@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'models/post_model.dart';
-import 'services/post_service.dart';
+import 'package:provider/provider.dart';
+import 'providers/post_provider.dart';
 
 class PostPage extends StatefulWidget {
   @override
@@ -8,16 +9,17 @@ class PostPage extends StatefulWidget {
 }
 
 class _PostPageState extends State<PostPage> {
-  late Future<List<PostModel>> futurePosts;
-
   @override
   void initState() {
     super.initState();
-    futurePosts = PostService.getPosts();
+    Future.microtask(() {
+      context.read<PostProvider>().getPosts();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<PostProvider>();
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -30,30 +32,28 @@ class _PostPageState extends State<PostPage> {
         ),
         backgroundColor: Colors.lightBlue,
       ),
-      body: FutureBuilder<List<PostModel>>(
-        future: futurePosts,
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            final posts = snapshot.data!;
-            return ListView.builder(
-              itemCount: posts.length,
-              itemBuilder: (context, index) {
-                final post = posts[index];
-                return Card(
-                  margin: const EdgeInsets.all(10),
-                  child: ListTile(
-                    title: Text(post.title),
-                    subtitle: Text(post.body),
-                    leading: CircleAvatar(child: Text(post.id.toString())),
-                  ),
-                );
-              },
-            );
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else {
+      body: Builder(
+        builder: (context) {
+          if (provider.isLoading) {
             return Center(child: CircularProgressIndicator());
           }
+          if (provider.errorMessage.isNotEmpty) {
+            return Center(child: Text(provider.errorMessage));
+          }
+          return ListView.builder(
+            itemCount: provider.posts.length,
+            itemBuilder: (context, index) {
+              final post = provider.posts[index];
+              return Card(
+                margin: const EdgeInsets.all(10),
+                child: ListTile(
+                  title: Text(post.title),
+                  subtitle: Text(post.body),
+                  leading: CircleAvatar(child: Text(post.id.toString())),
+                ),
+              );
+            },
+          );
         },
       ),
       floatingActionButton: Row(
